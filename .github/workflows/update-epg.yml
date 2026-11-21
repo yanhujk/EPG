@@ -35,9 +35,18 @@ jobs:
       - name: Verify EPG output
         run: |
           set -e
+
+          echo "Checking website files..."
+
+          test -s _site/index.html
           test -s _site/epg_CN_0800.xml.gz
+
           gzip -t _site/epg_CN_0800.xml.gz
-          ls -lh _site/
+
+          echo "Website file list:"
+          ls -lah _site/
+
+          echo "All files verified"
 
       - name: Upload GitHub Pages artifact
         id: upload

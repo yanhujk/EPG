@@ -1,0 +1,51 @@
+
+name: Daily EPG Timezone Conversion
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    # 每天 UTC 18:00 执行
+    # 北京时间每天 02:00
+    - cron: "0 18 * * *"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  update-epg:
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Download and convert EPG
+        run: python convert_epg.py
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload EPG files
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: ./_site
+
+      - name: Publish download files
+        id: deployment
+        uses: actions/deploy-pages@v4

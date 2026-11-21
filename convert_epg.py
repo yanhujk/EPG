@@ -20,23 +20,13 @@ PATTERN = re.compile(
 )
 
 
+
 def convert_time(match):
     attribute = match.group(1)
-    timestamp = match.group(2).decode("ascii")
+    timestamp = match.group(2)
 
-    dt = datetime.datetime.strptime(
-        timestamp, "%Y%m%d%H%M%S"
-    )
+    return attribute + b'="' + timestamp + b' +0800"'
 
-    dt += datetime.timedelta(hours=8)
-
-    new_timestamp = dt.strftime("%Y%m%d%H%M%S")
-
-    return (
-        attribute + b'="' +
-        new_timestamp.encode("ascii") +
-        b' +0800"'
-    )
 
 
 def main():

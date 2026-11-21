@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
 
   schedule:
-    # 每天北京时间 02:00 执行
+    # 每天北京时间 02:00
     - cron: "0 18 * * *"
 
 permissions:
@@ -27,24 +27,37 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@v6
         with:
           python-version: "3.x"
 
       - name: Download and convert EPG
         run: python convert_epg.py
 
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v6
+      - name: Verify output files
+        run: |
+          echo "Checking generated files..."
+          ls -lah _site
 
-      - name: Upload EPG files
+          test -s _site/epg_CN_0800.xml.gz
+
+          gzip -t _site/epg_CN_0800.xml.gz
+
+          echo "EPG file verification successful"
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
-          path: ./_site
+          name: github-pages
+          path: ./_site/
+          retention-days: 1
 
       - name: Publish download files
         id: deployment
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@v4

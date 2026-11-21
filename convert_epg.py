@@ -15,7 +15,6 @@ OUTPUT_DIR = "_site"
 OUTPUT_FILE = os.path.join(OUTPUT_DIR, "epg_CN_0800.xml.gz")
 TEMP_FILE = OUTPUT_FILE + ".tmp"
 
-# 匹配 start 和 stop 属性中的 +0000
 PATTERN = re.compile(
     rb'(start|stop)="(\d{14})\s+\+0000"'
 )
@@ -29,7 +28,6 @@ def convert_time(match):
         timestamp, "%Y%m%d%H%M%S"
     )
 
-    # UTC 时间增加 8 小时，改为北京时间
     dt += datetime.timedelta(hours=8)
 
     new_timestamp = dt.strftime("%Y%m%d%H%M%S")
@@ -42,14 +40,12 @@ def convert_time(match):
 
 
 def main():
+
     print("Downloading:", SOURCE_URL)
 
     request = urllib.request.Request(
         SOURCE_URL,
-        headers={
-            "User-Agent": "Mozilla/5.0",
-            "Accept-Encoding": "identity"
-        }
+        headers={"User-Agent": "Mozilla/5.0"}
     )
 
     with urllib.request.urlopen(request, timeout=180) as response:
@@ -60,108 +56,91 @@ def main():
 
     print("Downloaded:", len(compressed_data), "bytes")
 
-    # 解压原始 XML.GZ
-    try:
-        xml_data = gzip.decompress(compressed_data)
-    except Exception as e:
-        raise RuntimeError("GZIP decompression failed: " + str(e))
+    # 解压 XML.GZ
+    xml_data = gzip.decompress(compressed_data)
 
     print("XML size:", len(xml_data), "bytes")
 
-    # 统计并转换 start、stop
-    matches = PATTERN.findall(xml_data)
-
-    if not matches:
-        raise RuntimeError("No +0000 start/stop timestamps found")
-
-    converted_xml = PATTERN.sub(convert_time, xml_data)
-
+    # 统计原始时间
     start_count = len(re.findall(
-        rb'start="\d{14}\s+\+0800"', converted_xml
+        rb'start="\d{14}\s+\+0000"', xml_data
     ))
 
     stop_count = len(re.findall(
-        rb'stop="\d{14}\s+\+0800"', converted_xml
+        rb'stop="\d{14}\s+\+0000"', xml_data
     ))
 
-    # 检查 XML 是否有效
-    try:
-        ET.fromstring(converted_xml)
-    except Exception as e:
-        raise RuntimeError("XML validation failed: " + str(e))
+    total_count = start_count + stop_count
 
-    # 确保输出目录存在
+    if total_count == 0:
+        raise RuntimeError("No +0000 timestamps found")
+
+    # 转换所有 start 和 stop
+    converted_xml = PATTERN.sub(convert_time, xml_data)
+
+    # 检查 XML 格式
+    ET.fromstring(converted_xml)
+
+    # 检查转换结果
+    remaining = len(re.findall(
+        rb'(start|stop)="\d{14}\s+\+0000"',
+        converted_xml
+    ))
+
+    if remaining != 0:
+        raise RuntimeError("Some +0000 timestamps remain")
+
+    # 创建输出目录
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    # 重新压缩，mtime=0 使输出更稳定
+    # 重新压缩
     compressed_output = gzip.compress(
         converted_xml,
         compresslevel=9,
         mtime=0
     )
 
-    # 临时文件写入完成后再替换正式文件
     with open(TEMP_FILE, "wb") as f:
         f.write(compressed_output)
 
     os.replace(TEMP_FILE, OUTPUT_FILE)
 
-
-# 生成 GitHub Pages 首页
-index_html = """<!DOCTYPE html>
+    # 生成首页
+    index_html = """<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>EPG 节目表下载</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 700px;
-            margin: 60px auto;
-            padding: 20px;
-            line-height: 1.8;
-        }
-        .download {
-            display: inline-block;
-            padding: 12px 24px;
-            background: #238636;
-            color: white;
-            text-decoration: none;
-            border-radius: 6px;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EPG 节目表下载</title>
 </head>
 <body>
-    <h2>EPG 节目表下载</h2>
-    <p>数据来源：EPG.PW</p>
-    <p>节目时区：北京时间 UTC+8</p>
-    <p>更新频率：每天自动更新</p>
-    <p>
-        <a class="download" href="./epg_CN_0800.xml.gz">
-            下载 EPG XML.GZ
-        </a>
-    </p>
-    <p>文件：epg_CN_0800.xml.gz</p>
+<h2>EPG 节目表下载</h2>
+<p>数据来源：EPG.PW</p>
+<p>节目时区：北京时间 UTC+8</p>
+<p>更新频率：每天自动更新</p>
+<p>
+<a href="./epg_CN_0800.xml.gz">
+下载 EPG XML.GZ
+</a>
+</p>
 </body>
 </html>
 """
 
-index_path = os.path.join(OUTPUT_DIR, "index.html")
+    index_path = os.path.join(OUTPUT_DIR, "index.html")
 
-with open(index_path, "w", encoding="utf-8") as f:
-    f.write(index_html)
+    with open(index_path, "w", encoding="utf-8") as f:
+        f.write(index_html)
 
-print("Homepage generated:", index_path)
-
-    
+    # 输出执行结果
     print("--------------------------------")
     print("Conversion successful")
-    print("Converted timestamps:", len(matches))
-    print("start +0800:", start_count)
-    print("stop  +0800:", stop_count)
+    print("Original start +0000:", start_count)
+    print("Original stop +0000:", stop_count)
+    print("Total converted:", total_count)
+    print("Remaining +0000:", remaining)
     print("Output:", OUTPUT_FILE)
-    print("Compressed size:", len(compressed_output))
+    print("Homepage:", index_path)
     print("--------------------------------")
 
 

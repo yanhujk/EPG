@@ -106,28 +106,54 @@ def main():
 
     os.replace(TEMP_FILE, OUTPUT_FILE)
 
-# 自动生成网站首页
+
+# 生成 GitHub Pages 首页
 index_html = """<!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<title>EPG XMLTV Download</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>EPG 节目表下载</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 700px;
+            margin: 60px auto;
+            padding: 20px;
+            line-height: 1.8;
+        }
+        .download {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #238636;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+        }
+    </style>
 </head>
 <body>
-<h2>EPG XMLTV 北京时间版本</h2>
-<p>节目时区：+0800</p>
-<p>
-<a href="epg_CN_0800.xml.gz">
-下载 epg_CN_0800.xml.gz
-</a>
-</p>
+    <h2>EPG 节目表下载</h2>
+    <p>数据来源：EPG.PW</p>
+    <p>节目时区：北京时间 UTC+8</p>
+    <p>更新频率：每天自动更新</p>
+    <p>
+        <a class="download" href="./epg_CN_0800.xml.gz">
+            下载 EPG XML.GZ
+        </a>
+    </p>
+    <p>文件：epg_CN_0800.xml.gz</p>
 </body>
 </html>
 """
 
-with open(os.path.join(OUTPUT_DIR, "index.html"),
-          "w", encoding="utf-8") as f:
+index_path = os.path.join(OUTPUT_DIR, "index.html")
+
+with open(index_path, "w", encoding="utf-8") as f:
     f.write(index_html)
+
+print("Homepage generated:", index_path)
+
     
     print("--------------------------------")
     print("Conversion successful")

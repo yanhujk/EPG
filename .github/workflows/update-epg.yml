@@ -3,27 +3,22 @@ name: Daily EPG Timezone Conversion
 
 on:
   workflow_dispatch:
-
   schedule:
     # 每天北京时间 02:00
     - cron: "0 18 * * *"
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: github-pages
   cancel-in-progress: true
 
 jobs:
-  update-epg:
-    runs-on: ubuntu-latest
 
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  # 第一个 Job：下载、转换并上传 Pages Artifact
+  build:
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
@@ -37,27 +32,35 @@ jobs:
       - name: Download and convert EPG
         run: python convert_epg.py
 
-      - name: Verify output files
+      - name: Verify EPG output
         run: |
-          echo "Checking generated files..."
-          ls -lah _site
-
+          set -e
           test -s _site/epg_CN_0800.xml.gz
-
           gzip -t _site/epg_CN_0800.xml.gz
-
-          echo "EPG file verification successful"
-
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
+          ls -lh _site/
 
       - name: Upload GitHub Pages artifact
+        id: upload
         uses: actions/upload-pages-artifact@v4
         with:
           name: github-pages
-          path: ./_site/
+          path: _site/
           retention-days: 1
 
-      - name: Publish download files
+  # 第二个 Job：等待 build 完成后部署
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
